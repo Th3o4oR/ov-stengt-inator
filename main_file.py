@@ -2,8 +2,8 @@ import machine
 import urequests
 import network
 import time
-import sys # For exiting
 import _thread
+import gc
 
 # Support files
 import credentials
@@ -19,7 +19,9 @@ NETWORK_LOGIN_BODY: str = "buttonClicked=4&err_flag=0&info_flag=0&info_msg=0&ema
 WLAN_CONNECTION_TIMEOUT: int = 20 # Seconds
 API_CALL_INTERVAL:       int = 60 # Seconds
 
-ONBOARD_LED_PIN = machine.Pin("LED", machine.Pin.OUT)
+ONBOARD_LED_PIN: machine.Pin = machine.Pin("LED", machine.Pin.OUT)
+
+BLINK_SPEED: float = 1
 
 wlan: network.WLAN
 def connect_wlan():
@@ -108,17 +110,17 @@ def __main__():
     internet_connected: bool = connect_wlan()
     while not internet_connected:
         print("X Failed to connect to internet, retrying...")
-        color.change_color(color.BLUE, blink=True)
+        color.change_color(color.BLUE, BLINK_SPEED)
         internet_connected = connect_wlan()
     print("")
 
     while True:
         response: str | None = call_api()
         if (response == None):
-            color.change_color(color.YELLOW, blink=True)
+            color.change_color(color.YELLOW, BLINK_SPEED)
             if (not test_connectivity()):
                 print("X Lost connection to network, attempting to reconnect...")
-                color.change_color(color.BLUE, blink=True)
+                color.change_color(color.BLUE, BLINK_SPEED)
                 network_connected: bool = connect_wlan()
                 if (network_connected):
                     print("√ Reconnected to network")
@@ -132,22 +134,23 @@ def __main__():
         else:
             response_json = response.json()
             if (response_json["open"] == "1"):
-                color.change_color(color.GREEN)
+                color.change_color(color.GREEN, fade_time=1)
                 print("Door OPEN", end="")
             else:
-                color.change_color(color.RED)
+                color.change_color(color.RED, fade_time=1)
                 print("Door CLOSED", end="")
             print(" for " + str(response_json["time"]) + " seconds\n")
         
         # Wait until next api call
+
         wait(API_CALL_INTERVAL, string="until next API call")
 
 try:
-    blink_thread: int = _thread.start_new_thread(color.color_thread, ())
+    color_thread: int = _thread.start_new_thread(color.color_thread, ())
+
     __main__()
 except KeyboardInterrupt:
     clear_terminal_line()
     print("Keyboard interrupt, exiting...")
     color.color_thread_exit = True
     ONBOARD_LED_PIN.value(0)
-    sys.exit()
