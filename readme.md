@@ -7,5 +7,5 @@ Prosjektet inneholder kode for en Raspberry Pi Pico W, som vil kunne sjekke om d
 - Rød: Døra er stengt
 - Grønn: Døra er åpen
 - Blinkende gul: API-en er utilgjgengelig
-- Blå: Pico-en prøver å kople til Wi-Fi for første gang siden oppstart
-- Blinkende blå: Pico-en prøver å kople til Wi-Fi etter å ha mistet tilkopling
+- Blå: Pico-en prøver å koble til Wi-Fi for første gang siden oppstart
+- Blinkende blå: Pico-en prøver å koble til Wi-Fi etter å ha mistet tilkopling
