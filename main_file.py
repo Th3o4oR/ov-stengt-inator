@@ -11,8 +11,8 @@ import credentials
 import color
 
 API_URL:  str = "http://www.omegav.no/api/dooropen.php"
-PING_URL: str = "http://google.com"
-# PING_URL: str = "http://neverssl.com"
+# PING_URL: str = "http://google.com"
+PING_URL: str = "http://neverssl.com"
 NETWORK_LOGIN_URL:  str = "https://wlc.it.ntnu.no/login.html"
 NETWORK_LOGIN_BODY: str = "buttonClicked=4&err_flag=0&info_flag=0&info_msg=0&email=example%40mail.com"
 
@@ -58,8 +58,8 @@ def test_connectivity() -> bool:
     print("\nChecking internet connection...")
     try:
         res = urequests.get(PING_URL)
-        if (res.status_code != 200):
-            raise Exception("HTTP status code not 200")
+        if ("Web Authentication Redirect" in res.text or res.status_code != 200):
+            raise Exception("No internet connection")
         return True
     except Exception as e:
         print("X Internet connection failed:", e)
