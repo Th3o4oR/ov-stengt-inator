@@ -4,14 +4,13 @@ import network
 import time
 import sys # For exiting
 import _thread
-# from typing import Callable
 
 # Support files
 import credentials
 import color
 
 API_URL:  str = "http://www.omegav.no/api/dooropen.php"
-# PING_URL: str = "http://google.com"
+# PING_URL: str = "http://google.com" # This causes issues with returned value
 PING_URL: str = "http://neverssl.com"
 NETWORK_LOGIN_URL:  str = "https://wlc.it.ntnu.no/login.html"
 NETWORK_LOGIN_BODY: str = "buttonClicked=4&err_flag=0&info_flag=0&info_msg=0&email=example%40mail.com"
@@ -129,16 +128,18 @@ def __main__():
             else:
                 print("√ Connection to network OK")
             print("")
-            continue
-        
-        response_json = response.json()
-        if (response_json["open"] == "1"):
-            color.change_color(color.GREEN)
-            print("Door OPEN", end="")
+            # continue
         else:
-            color.change_color(color.RED)
-            print("Door CLOSED", end="")
-        print(" for " + str(response_json["time"]) + " seconds\n")
+            response_json = response.json()
+            if (response_json["open"] == "1"):
+                color.change_color(color.GREEN)
+                print("Door OPEN", end="")
+            else:
+                color.change_color(color.RED)
+                print("Door CLOSED", end="")
+            print(" for " + str(response_json["time"]) + " seconds\n")
+        
+        # Wait until next api call
         wait(API_CALL_INTERVAL, string="until next API call")
 
 try:

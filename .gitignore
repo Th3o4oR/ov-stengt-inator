@@ -1,4 +1,7 @@
 # MacOS clutter
 .DS_Store
 
+.vscode
+.picowgo
+
 credentials.py
