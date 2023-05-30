@@ -3,7 +3,6 @@ import urequests
 import network
 import time
 import _thread
-import gc
 
 # Support files
 import credentials
@@ -146,11 +145,12 @@ def __main__():
         wait(API_CALL_INTERVAL, string="until next API call")
 
 try:
-    color_thread: int = _thread.start_new_thread(color.color_thread, ())
-
+    color.init()
+    _thread.start_new_thread(color.color_thread, ())
     __main__()
 except KeyboardInterrupt:
-    clear_terminal_line()
     print("Keyboard interrupt, exiting...")
+    clear_terminal_line()
     color.color_thread_exit = True
+    time.sleep(0.1)
     ONBOARD_LED_PIN.value(0)

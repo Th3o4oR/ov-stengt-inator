@@ -1,9 +1,10 @@
 import machine
 import time
 import math
+import _thread
 
 PWM_DUTY_MAX: int = 2**16-1
-PWM_FREQ: int = 1000
+PWM_FREQ: int = 100000
 
 RGB_PIN_RED:   machine.Pin = machine.Pin("GP28", machine.Pin.OUT)
 RGB_PIN_GREEN: machine.Pin = machine.Pin("GP27", machine.Pin.OUT)
@@ -16,6 +17,11 @@ RGB_PWM_BLUE:  machine.PWM = machine.PWM(RGB_PIN_BLUE)
 RGB_PWM_RED.freq(PWM_FREQ)
 RGB_PWM_GREEN.freq(PWM_FREQ)
 RGB_PWM_BLUE.freq(PWM_FREQ)
+
+def init():    
+    global color_thread_exit
+
+    color_thread_exit = False
 
 class Color:
     def __init__(self, r: float, g: float, b: float, name: str):
@@ -52,8 +58,11 @@ class Color:
             self.name + " * " + str(rhs)
         )
 
-        return color
-        
+        return color   
+
+    def __rmul__(self, lhs):
+        return self.__mul__(lhs)
+
     def __truediv__(self, rhs: float):
         color: Color = Color(
             self.red / rhs,
@@ -64,19 +73,22 @@ class Color:
 
         return color
 
+    def __rtruediv__(self, lhs):
+        return self.__truediv__(lhs)
+
 RED:    Color = Color(1,    0,    0, "red")
 GREEN:  Color = Color(0,    1,    0, "green")
 BLUE:   Color = Color(0,    0,    1, "blue")
 YELLOW: Color = Color(1,    0.75, 0, "yellow")
 BLACK:  Color = Color(0,    0,    0, "black")
 
-BRIGHTNESS = 1
-
 global_color: Color = BLACK
 global_prev_color: Color = BLACK
 global_blink_freq: float = 0
-global_fade_time: float = 1
+global_fade_time: float = 69
 global_change_time: int = time.ticks_cpu()
+global_brightness = 1
+color_thread_exit: bool = False
 
 # Update RGB LED
 def set_rgb(c: Color) -> None:
@@ -93,7 +105,6 @@ def change_color(c: Color, blink_freq: float = 0, fade_time: float = 0) -> None:
     global_fade_time = fade_time
     global_change_time = time.ticks_cpu()
 
-color_thread_exit: bool = False
 def color_thread() -> None:
     global global_color, global_prev_color, global_blink_freq, global_fade_time, color_thread_exit
 
@@ -107,7 +118,28 @@ def color_thread() -> None:
         fade_factor: float = 1.0 if not global_fade_time else (-math.cos(min(dt/global_fade_time, 1)*math.pi)+1)/2
         blink_factor: float = (math.floor(t*2*global_blink_freq)+1)%2
 
-        set_rgb((global_prev_color*(1-fade_factor) + global_color*fade_factor)*blink_factor*BRIGHTNESS)
+        set_rgb((global_prev_color*(1-fade_factor) + global_color*fade_factor)*blink_factor*global_brightness)
 
     print("[Color thread] Terminating...")
     set_rgb(BLACK)
+
+if __name__ == "__main__":
+    init()
+
+    _thread.start_new_thread(color_thread, ())
+
+    change_color(RED, fade_time=1)
+    time.sleep(1.5)
+    change_color(GREEN, fade_time=1)
+    time.sleep(1.5)
+    change_color(BLUE, fade_time=1)
+    time.sleep(1.5)
+    change_color(BLACK, fade_time=1)
+    time.sleep(1.5)
+    change_color(YELLOW, blink_freq=2)
+    time.sleep(1.5)
+    change_color(BLACK)
+    time.sleep(1.5)
+    
+    color_thread_exit = True
+    time.sleep(1.5)
