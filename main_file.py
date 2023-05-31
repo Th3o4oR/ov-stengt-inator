@@ -12,13 +12,8 @@ import color
 with (open("config.json", "rb")) as f:
     config: dict = ujson.loads(f.read())
 
-    NETWORK_SSID:     str = config["network_ssid"]
-    NETWORK_PASSWORD: str = config["network_password"]
-    WLAN_TIMEOUT:     int = config["wlan_timeout"]
-    PING_URL:         str = config["ping_url"]
-
-    NETWORK_LOGIN_URL:  str = config["login_request_url"]
-    NETWORK_LOGIN_BODY: str = config["login_request_body"]
+    NETWORKS: dict = config["networks"]
+    PING_URL: str = config["ping_url"]
 
     API_URL:      str = config["api_url"]
     API_INTERVAL: int = config["api_interval"]
@@ -35,30 +30,45 @@ def connect_wlan():
     # Connect to network
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
-    wlan.connect(NETWORK_SSID, NETWORK_PASSWORD)
-    print("Connecting to network...")
 
-    # Wait for connection
-    timed_out: bool = not wait(WLAN_TIMEOUT, exit_condition=lambda: wlan.isconnected(), string="for connection")
-    if (timed_out):
-        print("X Connection timed out")
-        return False
-    clear_terminal_line()
-    print("√ Connected to network:", wlan.ifconfig()[0])
+    for item in sorted(NETWORKS.keys()):
+        network_name: str = NETWORKS[item]["ssid"]
+        network_password: str = NETWORKS[item]["password"]
+        wlan_timeout: int = NETWORKS[item]["wlan_timeout"]
 
-    # Attempt login to NTNU Guest network
-    connected: bool = test_connectivity()
-    if (not connected):
-        print("Attempting \"login\"...")
-        res = urequests.post(NETWORK_LOGIN_URL, data=NETWORK_LOGIN_BODY)
-        if ("Connection Successful" in res.text):
-            print("√ \"Login\" successful")
-        else:
-            print("\"Login\" failed")
-            return False
-    
-    print("√ Connected to internet")
-    return True
+        wlan.disconnect()
+        wlan.connect(network_name, network_password)
+        print("Attempting connection to network \"" + network_name + "\"...")
+        timed_out: bool = not wait(wlan_timeout, exit_condition=lambda: wlan.isconnected(), string="for connection")
+        if (timed_out):
+            print("X Connection timed out")
+            continue
+        clear_terminal_line()
+        print("√ Connected to network:", wlan.ifconfig()[0])
+
+        # Attempt login to NTNU Guest network
+        connected: bool = test_connectivity()
+        if (not connected):
+            print("X Not connected to internet")
+            if ("login_portal_url" not in NETWORKS[item] or "login_portal_body" not in NETWORKS[item]):
+                print("X No login portal URL or body provided")
+                return False
+
+            login_portal_url = NETWORKS[item]["login_portal_url"]
+            login_portal_body = NETWORKS[item]["login_portal_body"]
+
+            print("Attempting \"login\"...")
+            res = urequests.post(login_portal_url, data=login_portal_body)
+            if ("Connection Successful" in res.text):
+                print("√ \"Login\" successful")
+            else:
+                print("\"Login\" failed")
+                return False
+        
+        print("√ Connected to internet")
+        return True
+
+    return False
 
 def test_connectivity() -> bool:
     print("\nChecking internet connection...")
@@ -114,7 +124,7 @@ def __main__():
     color.change_color(color.BLUE, fade_time=FADE_DURATION)
     internet_connected: bool = connect_wlan()
     while not internet_connected:
-        print("X Failed to connect to internet, retrying...")
+        print("\nX Failed to connect to internet, retrying...\n")
         color.change_color(color.BLUE, fade_time=FADE_DURATION, blink_freq=BLINK_FREQUENCY)
         internet_connected = connect_wlan()
     print("")

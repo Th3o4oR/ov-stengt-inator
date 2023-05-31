@@ -1,13 +1,22 @@
 {
-    "network_ssid": "example_network",
-    "network_password": "example_password",
-    "wlan_timeout": 20,
+    "networks": {
+        "1": {
+            "ssid": "home_network_name",
+            "password": "home_network_password",
+            "wlan_timeout": 15            
+        },
+        "2": {
+            "ssid": "ntnuguest",
+            "password": "",
+            "wlan_timeout": 20,
+            "login_portal_url": "https://wlc.it.ntnu.no/login.html",
+            "login_portal_body": "buttonClicked=4&err_flag=0&info_flag=0&info_msg=0&email=example%40mail.com"
+        }
+    },
+
     "ping_url": "http://neverssl.com",
 
-    "login_request_url": "https://example.com/login",
-    "login_request_body": "username=example_username&password=example_password",
-
-    "api_url": "api.example.com",
+    "api_url": "http://www.omegav.no/api/dooropen.php",
     "api_interval": 60,
 
     "color_fade_duration": 1,
