@@ -14,6 +14,13 @@
         }
     },
 
+    "color_mapping": {
+        "door_open": "green",
+        "door_closed": "red",
+        "api_fail": "yellow",
+        "attempting_connection": "blue"
+    },
+
     "ping_url": "http://neverssl.com",
 
     "api_url": "http://www.omegav.no/api/dooropen.php",
