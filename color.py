@@ -76,70 +76,96 @@ class Color:
     def __rtruediv__(self, lhs):
         return self.__truediv__(lhs)
 
-RED:    Color = Color(1,    0,    0, "red")
-GREEN:  Color = Color(0,    1,    0, "green")
-BLUE:   Color = Color(0,    0,    1, "blue")
-YELLOW: Color = Color(1,    0.75, 0, "yellow")
-BLACK:  Color = Color(0,    0,    0, "black")
+RED:    Color = Color(1, 0,    0, "red")
+GREEN:  Color = Color(0, 1,    0, "green")
+BLUE:   Color = Color(0, 0,    1, "blue")
+YELLOW: Color = Color(1, 0.75, 0, "yellow")
+BLACK:  Color = Color(0, 0,    0, "black")
 
+global_display_color: Color = BLACK
+global_display_color_prev: Color = BLACK
 global_color: Color = BLACK
-global_prev_color: Color = BLACK
+global_color_prev: Color = BLACK
+
 global_blink_freq: float = 0
-global_fade_time: float = 69
+global_fade_time: float = 1
 global_change_time: int = time.ticks_cpu()
-global_brightness = 1
+global_brightness: float = 1
 color_thread_exit: bool = False
 
 # Update RGB LED
 def set_rgb(c: Color) -> None:
+    c *= global_brightness
     RGB_PWM_RED.duty_u16(int((1-c.red)*PWM_DUTY_MAX))
     RGB_PWM_GREEN.duty_u16(int((1-c.green)*PWM_DUTY_MAX))
     RGB_PWM_BLUE.duty_u16(int((1-c.blue)*PWM_DUTY_MAX))
 
 # Update color variables
-def change_color(c: Color, blink_freq: float = 0, fade_time: float = 0) -> None:
-    global global_color, global_prev_color, global_blink_freq, global_fade_time, global_change_time
-    global_prev_color = global_color
-    global_color = c
-    global_blink_freq = blink_freq
-    global_fade_time = fade_time
+def change_color(c: Color, blink_freq: float = 0, fade_time: float | None = None) -> None:
+    global global_color, global_color_prev
+    global global_display_color, global_display_color_prev
+    global global_blink_freq, global_fade_time, global_change_time
+
+    global_color_prev  = global_color
+    global_color       = c
+
+    global_display_color = c
+    global_display_color_prev = global_color_prev
+
     global_change_time = time.ticks_cpu()
 
+    global_blink_freq = blink_freq
+    if (fade_time != None):
+        global_fade_time  = fade_time
+
 def color_thread() -> None:
-    global global_color, global_prev_color, global_blink_freq, global_fade_time, color_thread_exit
+    global global_color, global_color_prev
+    global global_display_color, global_display_color_prev
+    global global_blink_freq, global_fade_time, color_thread_exit, global_change_time
 
+    fade_factor: float = 0
+    new_blink_value: bool = True
+    old_blink_value: bool = True
     while not color_thread_exit:
-        t: float = time.ticks_cpu()
-        dt: float = time.ticks_diff(t, global_change_time)
+        t: float = float(time.ticks_cpu())
+        dt: float = time.ticks_diff(int(t), global_change_time)
         
-        t *= 10**-6
-        dt *= 10**-6
+        # Rescale time to seconds
+        t = pow(10, -6) * t
+        dt = pow(10, -6) * dt
         
-        fade_factor: float = 1.0 if not global_fade_time else (-math.cos(min(dt/global_fade_time, 1)*math.pi)+1)/2
-        blink_factor: float = (math.floor(t*2*global_blink_freq)+1)%2
+        old_blink_value = new_blink_value
+        new_blink_value = bool((math.floor(t*2*global_blink_freq)+1)%2) # Initialized to True
+        
+        if (new_blink_value != old_blink_value and global_blink_freq != 0):
+            global_change_time = time.ticks_cpu()
+            global_display_color_prev = global_display_color
+            global_display_color = [BLACK, global_color][new_blink_value]
 
-        set_rgb((global_prev_color*(1-fade_factor) + global_color*fade_factor)*blink_factor*global_brightness)
+        if (global_fade_time == 0):
+            set_rgb(global_display_color * new_blink_value)
+        else:
+            fade_factor = -math.cos(min(dt/global_fade_time, 1)*math.pi)/2 + 0.5
+            new_color: Color = global_display_color_prev*(1-fade_factor) + global_display_color*fade_factor
+            set_rgb(new_color)
 
     print("[Color thread] Terminating...")
     set_rgb(BLACK)
 
 if __name__ == "__main__":
-    init()
+    try:
+        init()
 
-    _thread.start_new_thread(color_thread, ())
+        _thread.start_new_thread(color_thread, ())
 
-    change_color(RED, fade_time=1)
-    time.sleep(1.5)
-    change_color(GREEN, fade_time=1)
-    time.sleep(1.5)
-    change_color(BLUE, fade_time=1)
-    time.sleep(1.5)
-    change_color(BLACK, fade_time=1)
-    time.sleep(1.5)
-    change_color(YELLOW, blink_freq=2)
-    time.sleep(1.5)
-    change_color(BLACK)
-    time.sleep(1.5)
-    
-    color_thread_exit = True
-    time.sleep(1.5)
+        change_color(RED, fade_time=0.5)
+        time.sleep(0.5)
+        change_color(BLACK, fade_time=0.5)
+        time.sleep(0.5)
+        change_color(BLUE, fade_time=0.5, blink_freq=1)
+        time.sleep(10)
+        
+        color_thread_exit = True
+    except KeyboardInterrupt:
+        color_thread_exit = True
+

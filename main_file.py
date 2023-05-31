@@ -3,24 +3,30 @@ import urequests
 import network
 import time
 import _thread
+import ujson
 
 # Support files
-import credentials
 import color
 
-API_URL:  str = "http://www.omegav.no/api/dooropen.php"
-# PING_URL: str = "http://google.com" # This causes issues with returned value
-PING_URL: str = "http://neverssl.com"
-NETWORK_LOGIN_URL:  str = "https://wlc.it.ntnu.no/login.html"
-NETWORK_LOGIN_BODY: str = "buttonClicked=4&err_flag=0&info_flag=0&info_msg=0&email=example%40mail.com"
+# Load config
+with (open("config.json", "rb")) as f:
+    config: dict = ujson.loads(f.read())
 
-# Times
-WLAN_CONNECTION_TIMEOUT: int = 20 # Seconds
-API_CALL_INTERVAL:       int = 60 # Seconds
+    NETWORK_SSID:     str = config["network_ssid"]
+    NETWORK_PASSWORD: str = config["network_password"]
+    WLAN_TIMEOUT:     int = config["wlan_timeout"]
+    PING_URL:         str = config["ping_url"]
+
+    NETWORK_LOGIN_URL:  str = config["login_request_url"]
+    NETWORK_LOGIN_BODY: str = config["login_request_body"]
+
+    API_URL:      str = config["api_url"]
+    API_INTERVAL: int = config["api_interval"]
+
+    FADE_DURATION: float = float(config["color_fade_duration"])
+    BLINK_FREQUENCY: float = float(min(config["color_blink_frequency"], FADE_DURATION/2))
 
 ONBOARD_LED_PIN: machine.Pin = machine.Pin("LED", machine.Pin.OUT)
-
-BLINK_SPEED: float = 1
 
 wlan: network.WLAN
 def connect_wlan():
@@ -29,11 +35,11 @@ def connect_wlan():
     # Connect to network
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
-    wlan.connect(credentials.NETWORK_SSID, credentials.NETWORK_PASSWORD)
+    wlan.connect(NETWORK_SSID, NETWORK_PASSWORD)
     print("Connecting to network...")
 
     # Wait for connection
-    timed_out: bool = not wait(WLAN_CONNECTION_TIMEOUT, exit_condition=lambda: wlan.isconnected(), string="for connection")
+    timed_out: bool = not wait(WLAN_TIMEOUT, exit_condition=lambda: wlan.isconnected(), string="for connection")
     if (timed_out):
         print("X Connection timed out")
         return False
@@ -105,21 +111,21 @@ def __main__():
     # Set onboard LED to on
     ONBOARD_LED_PIN.value(1)
     
-    color.change_color(color.BLUE)
+    color.change_color(color.BLUE, fade_time=FADE_DURATION)
     internet_connected: bool = connect_wlan()
     while not internet_connected:
         print("X Failed to connect to internet, retrying...")
-        color.change_color(color.BLUE, BLINK_SPEED)
+        color.change_color(color.BLUE, fade_time=FADE_DURATION, blink_freq=BLINK_FREQUENCY)
         internet_connected = connect_wlan()
     print("")
 
     while True:
         response: str | None = call_api()
         if (response == None):
-            color.change_color(color.YELLOW, BLINK_SPEED)
+            color.change_color(color.YELLOW, fade_time=FADE_DURATION, blink_freq=BLINK_FREQUENCY)
             if (not test_connectivity()):
                 print("X Lost connection to network, attempting to reconnect...")
-                color.change_color(color.BLUE, BLINK_SPEED)
+                color.change_color(color.BLUE, fade_time=FADE_DURATION, blink_freq=BLINK_FREQUENCY)
                 network_connected: bool = connect_wlan()
                 if (network_connected):
                     print("√ Reconnected to network")
@@ -133,24 +139,23 @@ def __main__():
         else:
             response_json = response.json()
             if (response_json["open"] == "1"):
-                color.change_color(color.GREEN, fade_time=1)
+                color.change_color(color.GREEN, fade_time=FADE_DURATION)
                 print("Door OPEN", end="")
             else:
-                color.change_color(color.RED, fade_time=1)
+                color.change_color(color.RED, fade_time=FADE_DURATION)
                 print("Door CLOSED", end="")
             print(" for " + str(response_json["time"]) + " seconds\n")
         
         # Wait until next api call
-
-        wait(API_CALL_INTERVAL, string="until next API call")
+        wait(API_INTERVAL, string="until next API call")
 
 try:
     color.init()
     _thread.start_new_thread(color.color_thread, ())
     __main__()
 except KeyboardInterrupt:
-    print("Keyboard interrupt, exiting...")
+    print("\nKeyboard interrupt, exiting...")
     clear_terminal_line()
     color.color_thread_exit = True
-    time.sleep(0.1)
+    # time.sleep(0.1)
     ONBOARD_LED_PIN.value(0)

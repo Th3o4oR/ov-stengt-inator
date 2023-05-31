@@ -1,0 +1,15 @@
+{
+    "network_ssid": "example_network",
+    "network_password": "example_password",
+    "wlan_timeout": 20,
+    "ping_url": "http://neverssl.com",
+
+    "login_request_url": "https://example.com/login",
+    "login_request_body": "username=example_username&password=example_password",
+
+    "api_url": "api.example.com",
+    "api_interval": 60,
+
+    "color_fade_duration": 1,
+    "color_blink_frequency": 0.5
+}
