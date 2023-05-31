@@ -35,7 +35,7 @@ class Color:
             self.red + rhs.red,
             self.green + rhs.green,
             self.blue + rhs.blue,
-            self.name + " + " + rhs.name
+            self.name
         )
 
         return color
@@ -45,7 +45,7 @@ class Color:
             self.red - rhs.red,
             self.green - rhs.green,
             self.blue - rhs.blue,
-            self.name + " - " + rhs.name
+            self.name
         )
 
         return color
@@ -55,7 +55,7 @@ class Color:
             self.red * rhs,
             self.green * rhs,
             self.blue * rhs,
-            self.name + " * " + str(rhs)
+            self.name
         )
 
         return color   
@@ -68,7 +68,7 @@ class Color:
             self.red / rhs,
             self.green / rhs,
             self.blue / rhs,
-            self.name + " / " + str(rhs)
+            self.name
         )
 
         return color
@@ -81,6 +81,14 @@ GREEN:  Color = Color(0, 1,    0, "green")
 BLUE:   Color = Color(0, 0,    1, "blue")
 YELLOW: Color = Color(1, 0.75, 0, "yellow")
 BLACK:  Color = Color(0, 0,    0, "black")
+
+global_colors: dict[str, Color] = {
+    "red":    RED,
+    "green":  GREEN,
+    "blue":   BLUE,
+    "yellow": YELLOW,
+    "black":  BLACK
+}
 
 global_display_color: Color = BLACK
 global_display_color_prev: Color = BLACK

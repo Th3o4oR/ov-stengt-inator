@@ -14,12 +14,13 @@ with (open("config.json", "rb")) as f:
 
     NETWORKS: dict = config["networks"]
     PING_URL: str = config["ping_url"]
-
     API_URL:      str = config["api_url"]
     API_INTERVAL: int = config["api_interval"]
 
     FADE_DURATION: float = float(config["color_fade_duration"])
     BLINK_FREQUENCY: float = float(min(config["color_blink_frequency"], FADE_DURATION/2))
+
+    COLOR_MAPPING: dict[str, str] = config["color_mapping"]
 
 ONBOARD_LED_PIN: machine.Pin = machine.Pin("LED", machine.Pin.OUT)
 
@@ -120,22 +121,28 @@ def clear_terminal_line() -> None:
 def __main__():
     # Set onboard LED to on
     ONBOARD_LED_PIN.value(1)
+
+    # Colors
+    C_door_open             = color.global_colors[COLOR_MAPPING["door_open"]]
+    C_door_closed           = color.global_colors[COLOR_MAPPING["door_closed"]]
+    C_api_fail              = color.global_colors[COLOR_MAPPING["api_fail"]]
+    C_attempting_connection = color.global_colors[COLOR_MAPPING["attempting_connection"]]
     
-    color.change_color(color.BLUE, fade_time=FADE_DURATION)
+    color.change_color(C_attempting_connection, fade_time=FADE_DURATION)
     internet_connected: bool = connect_wlan()
     while not internet_connected:
         print("\nX Failed to connect to internet, retrying...\n")
-        color.change_color(color.BLUE, fade_time=FADE_DURATION, blink_freq=BLINK_FREQUENCY)
+        color.change_color(C_attempting_connection, fade_time=FADE_DURATION, blink_freq=BLINK_FREQUENCY)
         internet_connected = connect_wlan()
     print("")
 
     while True:
         response: str | None = call_api()
         if (response == None):
-            color.change_color(color.YELLOW, fade_time=FADE_DURATION, blink_freq=BLINK_FREQUENCY)
+            color.change_color(C_api_fail, fade_time=FADE_DURATION, blink_freq=BLINK_FREQUENCY)
             if (not test_connectivity()):
                 print("X Lost connection to network, attempting to reconnect...")
-                color.change_color(color.BLUE, fade_time=FADE_DURATION, blink_freq=BLINK_FREQUENCY)
+                color.change_color(C_attempting_connection, fade_time=FADE_DURATION, blink_freq=BLINK_FREQUENCY)
                 network_connected: bool = connect_wlan()
                 if (network_connected):
                     print("√ Reconnected to network")
@@ -149,10 +156,10 @@ def __main__():
         else:
             response_json = response.json()
             if (response_json["open"] == "1"):
-                color.change_color(color.GREEN, fade_time=FADE_DURATION)
+                color.change_color(C_door_open, fade_time=FADE_DURATION)
                 print("Door OPEN", end="")
             else:
-                color.change_color(color.RED, fade_time=FADE_DURATION)
+                color.change_color(C_door_closed, fade_time=FADE_DURATION)
                 print("Door CLOSED", end="")
             print(" for " + str(response_json["time"]) + " seconds\n")
         
