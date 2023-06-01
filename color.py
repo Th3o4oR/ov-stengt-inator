@@ -80,6 +80,7 @@ RED:    Color = Color(1, 0,    0, "red")
 GREEN:  Color = Color(0, 1,    0, "green")
 BLUE:   Color = Color(0, 0,    1, "blue")
 YELLOW: Color = Color(1, 0.75, 0, "yellow")
+PURPLE: Color = Color(1, 0,    1, "purple")
 BLACK:  Color = Color(0, 0,    0, "black")
 
 global_colors: dict[str, Color] = {
@@ -87,6 +88,7 @@ global_colors: dict[str, Color] = {
     "green":  GREEN,
     "blue":   BLUE,
     "yellow": YELLOW,
+    "purple": PURPLE,
     "black":  BLACK
 }
 
@@ -98,7 +100,7 @@ global_color_prev: Color = BLACK
 global_blink_freq: float = 0
 global_fade_time: float = 1
 global_change_time: int = time.ticks_cpu()
-global_brightness: float = 1
+global_brightness: float = 0.5
 color_thread_exit: bool = False
 
 # Update RGB LED

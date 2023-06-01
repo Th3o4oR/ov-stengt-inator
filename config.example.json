@@ -11,6 +11,13 @@
             "wlan_timeout": 20,
             "login_portal_url": "https://wlc.it.ntnu.no/login.html",
             "login_portal_body": "buttonClicked=4&err_flag=0&info_flag=0&info_msg=0&email=example%40mail.com"
+        },
+        "3": {
+            "ssid": "ntnuguest",
+            "password": "",
+            "wlan_timeout": 3,
+            "login_portal_url": "https://wlc.it.ntnu.no/login.html",
+            "login_portal_body": "buttonClicked=4&err_flag=0&info_flag=0&info_msg=0&email=example%40mail.com"
         }
     },
 
@@ -22,6 +29,7 @@
     },
 
     "ping_url": "http://neverssl.com",
+    "ping_url": "http://www.apple.com/library/test/success.html",
 
     "api_url": "http://www.omegav.no/api/dooropen.php",
     "api_interval": 60,
