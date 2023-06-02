@@ -1,61 +1,46 @@
 import color
 import network
 import machine
-import time
+# import time
 
-# Network stuff
-NETWORKS: dict
-NETWORK_NAMES: list[str]
-WLAN_OBJECT: network.WLAN
-PING_URL: str # For checking internet connection
+# Variables overridden by config file
+NETWORKS:      dict[int, dict] = {}
+NETWORK_NAMES: list[str]       = []
+PING_URL:      str = ""
+API_URL:       str = ""
+API_INTERVAL:  int = 60
 
-# API stuff
-API_URL: str
-API_INTERVAL: int
+# Global variables
+WLAN_OBJECT: network.WLAN = network.WLAN(network.STA_IF)
 
 # Hardware stuff
-ONBOARD_LED_PIN: machine.Pin
+ONBOARD_LED_PIN: machine.Pin = machine.Pin("LED", machine.Pin.OUT)
 
-# Colors
-COLOR_DOOR_OPEN:       color.Color
-COLOR_DOOR_CLOSED:     color.Color
-COLOR_API_FAIL:        color.Color
-COLOR_WLAN_CONNECTING: color.Color
-COLOR_PINGING:         color.Color
+# Initialize colors
+COLOR_MAPPING: dict[str, color.Color] = {
+    "red":    color.Color(1, 0,    0, "red"),
+    "green":  color.Color(0, 1,    0, "green"),
+    "blue":   color.Color(0, 0,    1, "blue"),
+    "yellow": color.Color(1, 0.75, 0, "yellow"),
+    "purple": color.Color(1, 0,    1, "purple"),
+    "black":  color.Color(0, 0,    0, "black")
+}
+DISPLAY_COLOR_CURR: color.Color = COLOR_MAPPING["black"]
+DISPLAY_COLOR_PREV: color.Color = COLOR_MAPPING["black"]
+ACTUAL_COLOR_CURR:  color.Color = COLOR_MAPPING["black"]
+ACTUAL_COLOR_PREV:  color.Color = COLOR_MAPPING["black"]
+COLOR_CHANGE_TIME: int = 0
 
-# Color thread
-COLOR_MAPPING: dict[str, color.Color]
-DISPLAY_COLOR_CURR: color.Color
-DISPLAY_COLOR_PREV: color.Color
-ACTUAL_COLOR_CURR:  color.Color
-ACTUAL_COLOR_PREV:  color.Color
-COLOR_CHANGE_TIME: int
+# Dummy values, these should be overwritten by config.json
+BLINK_STATE:     bool  = False
+BLINK_FREQUENCY: float = 0.0
+FADE_DURATION:   float = 1.0
+BRIGHTNESS:      float = 0.5
+COLOR_THREAD_EXIT: bool = False
 
-BLINK_FREQUENCY: float
-FADE_DURATION:   float
-BRIGHTNESS:      float
-COLOR_THREAD_EXIT: bool
-
-def colors_init() -> None:
-    # Initialize colors
-    COLOR_MAPPING = {
-        "red":    color.Color(1, 0,    0, "red"),
-        "green":  color.Color(0, 1,    0, "green"),
-        "blue":   color.Color(0, 0,    1, "blue"),
-        "yellow": color.Color(1, 0.75, 0, "yellow"),
-        "purple": color.Color(1, 0,    1, "purple"),
-        "black":  color.Color(0, 0,    0, "black")
-    }
-    DISPLAY_COLOR_CURR = COLOR_MAPPING["black"]
-    DISPLAY_COLOR_PREV = COLOR_MAPPING["black"]
-    ACTUAL_COLOR_CURR  = COLOR_MAPPING["black"]
-    ACTUAL_COLOR_PREV  = COLOR_MAPPING["black"]
-    COLOR_CHANGE_TIME  = time.ticks_cpu()
-
-    # Initialize thread variables
-    COLOR_THREAD_EXIT = False
-
-    # The following variables are overridden in main.py, as they are read from the config file
-    BLINK_FREQUENCY = 0
-    FADE_DURATION   = 1
-    BRIGHTNESS      = 0.5
+# Colors (also dummy values)
+COLOR_DOOR_OPEN:       color.Color = COLOR_MAPPING["yellow"]
+COLOR_DOOR_CLOSED:     color.Color = COLOR_MAPPING["yellow"]
+COLOR_API_FAIL:        color.Color = COLOR_MAPPING["yellow"]
+COLOR_WLAN_CONNECTING: color.Color = COLOR_MAPPING["yellow"]
+COLOR_PINGING:         color.Color = COLOR_MAPPING["yellow"]

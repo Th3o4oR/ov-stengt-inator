@@ -1,8 +1,9 @@
 # MacOS clutter
 .DS_Store
 
+# Local development config files
 .vscode
 .picowgo
 
-credentials.py
+# Local project config file (uploaded to pico)
 config.json
