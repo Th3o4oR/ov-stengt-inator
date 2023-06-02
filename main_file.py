@@ -13,6 +13,7 @@ NETWORKS: dict
 PING_URL: str
 API_URL: str
 API_INTERVAL: int
+CONFIG_NETWORK_NAMES: list[str]
 wlan: network.WLAN
 
 FADE_DURATION: float
@@ -28,9 +29,13 @@ COLOR_CHECKING_INTERNET: color.Color
 ONBOARD_LED_PIN: machine.Pin
 
 # Initialization
-def __init__():
-    global NETWORKS, PING_URL, API_URL, API_INTERVAL, wlan, FADE_DURATION, BLINK_FREQUENCY, COLOR_MAPPING, COLOR_DOOR_OPEN, COLOR_DOOR_CLOSED, COLOR_API_FAIL, COLOR_ATTEMPTING_CONNECTION, COLOR_CHECKING_INTERNET, ONBOARD_LED_PIN
+def init():
+    global NETWORKS, PING_URL, API_URL, API_INTERVAL, CONFIG_NETWORK_NAMES, wlan
+    global FADE_DURATION, BLINK_FREQUENCY
+    global COLOR_MAPPING, COLOR_DOOR_OPEN, COLOR_DOOR_CLOSED, COLOR_API_FAIL, COLOR_ATTEMPTING_CONNECTION, COLOR_CHECKING_INTERNET
+    global ONBOARD_LED_PIN
 
+    # Define all pins
     ONBOARD_LED_PIN: machine.Pin = machine.Pin("LED", machine.Pin.OUT)
 
     # Load config
@@ -38,6 +43,8 @@ def __init__():
         config: dict = ujson.loads(f.read())
 
         NETWORKS = config["networks"]
+        CONFIG_NETWORK_NAMES = [NETWORKS[item]["ssid"] for item in sorted(NETWORKS.keys())]
+        
         PING_URL = config["ping_url"]
         API_URL  = config["api_url"]
         API_INTERVAL = config["api_interval"]
@@ -46,8 +53,6 @@ def __init__():
         BLINK_FREQUENCY = float(min(config["color_blink_frequency"], FADE_DURATION/2))
 
         COLOR_MAPPING = config["color_mapping"]
-
-    wlan = network.WLAN(network.STA_IF)
 
     # Colors
     COLOR_DOOR_OPEN             = color.global_colors[COLOR_MAPPING["door_open"]]
@@ -58,6 +63,8 @@ def __init__():
 
     # Connect WLAN
     color.change_color(COLOR_ATTEMPTING_CONNECTION, fade_time=FADE_DURATION)
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
     internet_connected: bool = connect_wlan()
     while not internet_connected:
         print("\nX Failed to connect to internet")
@@ -67,22 +74,61 @@ def __init__():
         internet_connected = connect_wlan()
     print("")
 
-# wlan: network.WLAN = network.WLAN(network.STA_IF)
-# if (wlan.isconnected()):
-#     wlan.disconnect()
-# wlan.active(False)
-def connect_wlan() -> bool:
-    # global wlan
-
+def get_network_priority_from_name(network_name: str) -> int:
     for item in sorted(NETWORKS.keys()):
+        if (NETWORKS[item]["ssid"] == network_name):
+            return item
+    return -1
+
+# https://github.com/micropython/micropython-lib/issues/200
+# import gc
+def retrieve_url(url: str) -> urequests.Response | None:
+    # gc.collect()
+
+    try:
+        response: urequests.Response = urequests.get(url, timeout=20, headers={"Connection": "close"})
+
+        # print(response.text)
+        if (response.status_code != 200):
+            raise Exception("Response not OK")
+        if (response.text != None and "Web Authentication Redirect" in response.text):
+            raise Exception("Redirected to login portal")
+        
+        return response
+    except Exception as exception:
+        print(f"X API call to {url} failed:", exception)
+    
+    # gc.collect()
+    return None
+
+# Connect to WLAN
+def connect_wlan() -> bool:
+    # Get a list of all available networks
+    print("Scanning for available networks...")
+    available_networks: list[tuple[bytes, bytes, int, int, int, int]] = wlan.scan()
+    if (len(available_networks) == 0):
+        print("X No networks found")
+        return False
+    
+    # Check if any of the available networks are in the config
+    union: list[int] = []
+    for item in available_networks:
+        network_name: str = item[0].decode("utf-8")
+        if (network_name in CONFIG_NETWORK_NAMES):
+            print(f"- Scan revealed network: {network_name}, which exists in config")
+            priority = get_network_priority_from_name(network_name)
+            if (priority != -1):
+                union.append(priority)
+
+    # Loop through the available networks in the config, sorted by priority
+    for item in sorted(union):
+        # Connect to network
         network_name:     str = NETWORKS[item]["ssid"]
         network_password: str = NETWORKS[item]["password"]
         wlan_timeout:     int = NETWORKS[item]["wlan_timeout"]
-
-        wlan.active(True)
         wlan.connect(network_name, network_password)
 
-        # print(f"Attempting connection to network \"{network_name}\" with password \"{network_password}\"...")
+        # Wait for connection
         print(f"Attempting connection to network \"{network_name}\"...")
         timed_out: bool = not wait(wlan_timeout, exit_condition=lambda: wlan.isconnected(), string="for connection") # Returns true if exit condition met
         if (timed_out):
@@ -91,7 +137,7 @@ def connect_wlan() -> bool:
         clear_terminal_line()
         print("√ Connected to network:", wlan.ifconfig()[0])
 
-        # Attempt login to NTNU Guest network
+        # Attempt login if not connected to internet and login portal URL and body provided
         connected: bool = test_connectivity()
         if (not connected):
             print("X Not connected to internet")
@@ -115,39 +161,14 @@ def connect_wlan() -> bool:
 
     return False
 
-# https://github.com/micropython/micropython-lib/issues/200
-# import gc
-def retrieve_url(url: str) -> urequests.Response | None:
-    # gc.collect()
-    response = None
-
-    try:
-        response = urequests.get(url, timeout=20)
-        print(response.text)
-        if (response.status_code != 200):
-            raise Exception("Response not OK")
-        if ("Web Authentication Redirect" in response.text):
-            raise Exception("Redirected to login portal")
-        
-        return response
-    except Exception as e:
-        print(f"X API call to {url} failed:", e)
-        if (isinstance(e, OSError) and response):
-            # print("Caught OSError, closing response")
-            response.close()
-    
-    # gc.collect()
-    return response
-
+# Test if the router has internet connection
 def test_connectivity() -> bool:
     print("\nChecking internet connection...")
     color.change_color(COLOR_CHECKING_INTERNET, fade_time=FADE_DURATION)
 
     response: urequests.Response | None = retrieve_url(PING_URL)
     if (response == None):
-        color.change_color(color.BLACK, fade_time=FADE_DURATION)
         return False
-    color.change_color(color.BLACK, fade_time=FADE_DURATION)
     return True
 
 # True represents exit condition met, False represents timeout
@@ -179,27 +200,12 @@ def clear_terminal_line() -> None:
 
 def __main__():
     # Initialize
-    __init__()
+    init()
 
     # Set onboard LED to on
     ONBOARD_LED_PIN.value(1)
 
-    # # Colors
-    # COLOR_DOOR_OPEN             = color.global_colors[COLOR_MAPPING["door_open"]]
-    # COLOR_DOOR_CLOSED           = color.global_colors[COLOR_MAPPING["door_closed"]]
-    # COLOR_API_FAIL              = color.global_colors[COLOR_MAPPING["api_fail"]]
-    # COLOR_ATTEMPTING_CONNECTION = color.global_colors[COLOR_MAPPING["attempting_connection"]]
-    
-    # color.change_color(COLOR_ATTEMPTING_CONNECTION, fade_time=FADE_DURATION)
-    # internet_connected: bool = connect_wlan()
-    # while not internet_connected:
-    #     print("\nX Failed to connect to internet")
-    #     wait(5, string="before retrying")
-    #     print("")
-    #     color.change_color(COLOR_ATTEMPTING_CONNECTION, fade_time=FADE_DURATION, blink_freq=BLINK_FREQUENCY)
-    #     internet_connected = connect_wlan()
-    # print("")
-
+    # Loop
     while True:
         # response = retrieve_url(API_URL)
         print("Calling API...")
@@ -223,15 +229,23 @@ def __main__():
             print("")
             # continue
         else:
-            response_json = response.json()
+            try:
+                response_json = response.json()
+                if (response_json == None):
+                    raise Exception("Response JSON is None")
+                
+                if (response_json["open"] == "1"):
+                    color.change_color(COLOR_DOOR_OPEN, fade_time=FADE_DURATION)
+                    print("Door OPEN", end="")
+                else:
+                    color.change_color(COLOR_DOOR_CLOSED, fade_time=FADE_DURATION)
+                    print("Door CLOSED", end="")
+                print(" for " + str(response_json["time"]) + " seconds\n")
 
-            if (response_json["open"] == "1"):
-                color.change_color(COLOR_DOOR_OPEN, fade_time=FADE_DURATION)
-                print("Door OPEN", end="")
-            else:
-                color.change_color(COLOR_DOOR_CLOSED, fade_time=FADE_DURATION)
-                print("Door CLOSED", end="")
-            print(" for " + str(response_json["time"]) + " seconds\n")
+            except Exception as exception:
+                print("X Failed to parse response as JSON")
+                # print(exception)
+                # continue
         
         # Wait until next api call
         wait(API_INTERVAL, string="until next API call")
