@@ -1,6 +1,6 @@
-import machine
+# import machine
 import urequests
-import network
+# import network
 import time
 import _thread
 import ujson
@@ -58,13 +58,13 @@ def connect_wlan() -> bool:
         globals.WLAN_OBJECT.connect(network_name, network_password)
 
         # Wait for connection
-        print(f"Attempting connection to network \"{network_name}\"...")
+        print(f"\nAttempting connection to network \"{network_name}\"...")
         timed_out: bool = not wait(wlan_timeout, exit_condition=lambda: globals.WLAN_OBJECT.isconnected(), string="for connection") # Returns true if exit condition met
         if (timed_out):
             print("X Connection timed out")
             continue
         clear_terminal_line()
-        print("√ Connected to network:", globals.WLAN_OBJECT.ifconfig()[0])
+        print("\u2713 Connected to network:", globals.WLAN_OBJECT.ifconfig()[0])
 
         # Attempt login if not connected to internet and login portal URL and body provided
         connected: bool = test_connectivity()
@@ -80,12 +80,12 @@ def connect_wlan() -> bool:
             print("Attempting \"login\"...")
             res = urequests.post(login_portal_url, data=login_portal_body)
             if ("Connection Successful" in res.text):
-                print("√ \"Login\" successful")
+                print("\u2713 \"Login\" successful")
             else:
                 print("\"Login\" failed")
                 return False
         
-        print("√ Connected to internet")
+        print("\u2713 Connected to internet")
         return True
 
     return False
@@ -132,6 +132,10 @@ def get_network_priority_from_name(network_name: str) -> int:
         if (globals.NETWORKS[item]["ssid"] == network_name):
             return item
     return -1
+def api_frequency() -> int:
+    if (globals.DOOR_OPEN and globals.DOOR_STATUS_TIME < 60):
+        return globals.DOOR_STATUS_TIME
+    return globals.API_INTERVAL
 
 # Initialization
 def initialize_main() -> None:
@@ -195,12 +199,12 @@ def main_thread():
                 color_thread.change_color(globals.COLOR_WLAN_CONNECTING, fade_time=globals.FADE_DURATION, blink_freq=globals.BLINK_FREQUENCY)
                 network_connected: bool = connect_wlan()
                 if (network_connected):
-                    print("√ Reconnected to network")
+                    print("\u2713 Reconnected to network")
                 else:
                     print("X Failed to reconnect to network")
                     
             else:
-                print("√ Connection to network OK")
+                print("\u2713 Connection to network OK")
             print("")
             # continue
         else:
@@ -208,14 +212,16 @@ def main_thread():
                 response_json = response.json()
                 if (response_json == None):
                     raise Exception("Response JSON is None")
+                globals.DOOR_OPEN = bool(int(response_json["open"]))
+                globals.DOOR_STATUS_TIME = int(response_json["time"])
                 
-                if (response_json["open"] == "1"):
+                if (globals.DOOR_OPEN):
                     color_thread.change_color(globals.COLOR_DOOR_OPEN, fade_time=globals.FADE_DURATION)
-                    print("Door OPEN", end="")
+                    print("- Door OPEN", end="")
                 else:
                     color_thread.change_color(globals.COLOR_DOOR_CLOSED, fade_time=globals.FADE_DURATION)
-                    print("Door CLOSED", end="")
-                print(" for " + str(response_json["time"]) + " seconds\n")
+                    print("- Door CLOSED", end="")
+                print(" for " + str(globals.DOOR_STATUS_TIME) + " seconds\n")
 
             except Exception as exception:
                 print("X Failed to parse response as JSON")
@@ -223,7 +229,8 @@ def main_thread():
                 # continue
         
         # Wait until next api call
-        wait(globals.API_INTERVAL, string="until next API call")
+        wait_time = api_frequency()
+        wait(wait_time, string="until next API call")
 
 if (__name__ == "__main__"):
     # Perform initialization
@@ -240,5 +247,5 @@ if (__name__ == "__main__"):
     except KeyboardInterrupt:
         print("\nKeyboard interrupt, exiting...")
         clear_terminal_line()
-        globals.COLOR_THREAD_EXIT = True
+        globals.PROGRAM_EXIT = True
         globals.ONBOARD_LED_PIN.value(0)

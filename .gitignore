@@ -3,7 +3,12 @@
 
 # Local development config files
 .vscode
+
+# I think this stems from an older version of MicroPico extension
 .picowgo
+
+# Newer versions of MicroPico extension adds this file for project management
+.micropico
 
 # Local project config file (uploaded to pico)
 config.json

@@ -65,7 +65,7 @@ def color_thread_init() -> None:
 
     # Initialize thread variables
     globals.BLINK_STATE = False
-    globals.COLOR_THREAD_EXIT = False
+    globals.PROGRAM_EXIT = False
 
     # The following variables are overridden in main.py, as they are read from the config file
     globals.BLINK_FREQUENCY = 0
@@ -77,7 +77,7 @@ def color_thread() -> None:
     # Start thread
     fade_factor: float = 0
     should_blink: float = True
-    while not globals.COLOR_THREAD_EXIT:
+    while not globals.PROGRAM_EXIT:
         # Get current time and time since last color change (in microseconds)
         t: float = float(time.ticks_cpu())
         dt: float = time.ticks_diff(int(t), globals.COLOR_CHANGE_TIME)
@@ -118,7 +118,7 @@ if __name__ == "__main__":
         change_color(globals.COLOR_MAPPING["blue"], fade_time=0.5, blink_freq=1)
         time.sleep(10)
         
-        globals.COLOR_THREAD_EXIT = True
+        globals.PROGRAM_EXIT = True
     except KeyboardInterrupt:
-        globals.COLOR_THREAD_EXIT = True
+        globals.PROGRAM_EXIT = True
 
