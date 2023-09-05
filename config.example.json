@@ -15,13 +15,6 @@
     },
 
     "color_mapping": {
-        "door_open": "green",
-        "door_closed": "red",
-        "api_fail": "yellow",
-        "attempting_connection": "blue"
-    },
-
-    "color_mapping": {
         "door_open":       "green",
         "door_closed":     "red",
         "wlan_connecting": "blue",
