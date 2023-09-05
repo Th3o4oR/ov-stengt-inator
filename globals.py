@@ -3,7 +3,7 @@ import network
 import machine
 # import time
 
-# Global variables
+# Global variables (set after loading config.json)
 ## Network
 NETWORKS:      dict[int, dict]
 NETWORK_NAMES: list[str]
@@ -14,7 +14,7 @@ API_INTERVAL:  int
 BLINK_STATE:     bool
 BLINK_FREQUENCY: float
 FADE_DURATION:   float
-BRIGHTNESS:      float
+MAX_BRIGHTNESS:  float
 ## Program
 PROGRAM_EXIT: bool
 
@@ -28,18 +28,17 @@ ONBOARD_LED_PIN: machine.Pin = machine.Pin("LED", machine.Pin.OUT)
 
 # Initialize colors
 COLOR_MAPPING: dict[str, color.Color] = {
-    "red":    color.Color(1, 0,    0, "red"),
-    "green":  color.Color(0, 1,    0, "green"),
-    "blue":   color.Color(0, 0,    1, "blue"),
-    "yellow": color.Color(1, 0.75, 0, "yellow"),
-    "purple": color.Color(1, 0,    1, "purple"),
-    "black":  color.Color(0, 0,    0, "black")
+    "red":    color.Color(1, 0,    0),
+    "green":  color.Color(0, 1,    0),
+    "blue":   color.Color(0, 0,    1),
+    "yellow": color.Color(1, 0.75, 0),
+    "purple": color.Color(1, 0,    1),
+    "black":  color.Color(0, 0,    0)
 }
-DISPLAY_COLOR_CURR: color.Color = COLOR_MAPPING["black"]
-DISPLAY_COLOR_PREV: color.Color = COLOR_MAPPING["black"]
-ACTUAL_COLOR_CURR:  color.Color = COLOR_MAPPING["black"]
-ACTUAL_COLOR_PREV:  color.Color = COLOR_MAPPING["black"]
-COLOR_CHANGE_TIME:  int         = 0
+CURRENT_COLOR:     color.Color = COLOR_MAPPING["black"]
+TARGET_COLOR:      color.Color = COLOR_MAPPING["black"]
+PREVIOUS_COLOR:    color.Color = COLOR_MAPPING["black"]
+COLOR_CHANGE_TIME: int         = 0
 
 # Default colors (can be overwritten by config.json)
 COLOR_DOOR_OPEN:       color.Color = COLOR_MAPPING["green"]
