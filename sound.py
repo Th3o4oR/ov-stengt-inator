@@ -12,7 +12,7 @@ def beep(num: int = 1, freq: int = SPEAKER_DEFAULT_FREQ, duration: int = 500, pa
     SPEAKER_PWM.freq(freq)
 
     for _ in range(num):
-        print(f"Beep (frequency: {freq}, duration: {duration}, pause: {pause}")
+        print(f"Beep (frequency: {freq}, duration: {duration}, pause: {pause})")
         SPEAKER_PWM.duty_u16(PWM_DUTY_HALF)
         time.sleep_ms(duration)
         SPEAKER_PWM.duty_u16(0)
