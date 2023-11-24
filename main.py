@@ -8,6 +8,7 @@ import math
 
 # Support files
 import color_thread
+import sound
 import globals
 
 # Constants local to this file
@@ -41,7 +42,9 @@ def retrieve_url(url: str) -> urequests.Response | None:
 def connect_wlan() -> bool:
     # Get a list of all available networks
     print("Scanning for available networks...")
+    
     available_networks: list[tuple[bytes, bytes, int, int, int, int]] = globals.WLAN_OBJECT.scan()
+    
     if (len(available_networks) == 0):
         print(f"{FAILURE_SYMBOL} No networks found")
         return False
@@ -205,6 +208,7 @@ def initialize_main() -> None:
 
 # Main "thread"
 def main_thread():
+    OLD_STATE = None
     # Set onboard LED to on
     globals.ONBOARD_LED_PIN.value(1)
 
@@ -255,8 +259,21 @@ def main_thread():
                     print("- Door OPEN", end="")
                 
                 # Door is closed
+                if (response_json["open"] == "1"):
+                    color_thread.change_color(globals.COLOR_DOOR_OPEN, fade_time=globals.FADE_DURATION)
+                    
+                    if OLD_STATE != True:
+                        sound.play_file("sound_open")
+                        OLD_STATE = True
+
+                    print("Door OPEN", end="")
                 else:
                     color_thread.change_color(globals.COLOR_DOOR_CLOSED)
+                    
+                    if OLD_STATE != False:
+                        sound.play_file("sound_close")
+                        OLD_STATE = False
+
                     print("- Door CLOSED", end="")
                 print(" for " + str(globals.DOOR_STATUS_TIME) + " seconds\n")
 
