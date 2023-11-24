@@ -7,6 +7,7 @@ import ujson
 
 # Support files
 import color_thread
+import sound
 import globals
 
 # https://github.com/micropython/micropython-lib/issues/200
@@ -34,7 +35,9 @@ def retrieve_url(url: str) -> urequests.Response | None:
 def connect_wlan() -> bool:
     # Get a list of all available networks
     print("Scanning for available networks...")
+    #sound.play_file("sound_wifi_searching")
     available_networks: list[tuple[bytes, bytes, int, int, int, int]] = globals.WLAN_OBJECT.scan()
+    
     if (len(available_networks) == 0):
         print("X No networks found")
         return False
@@ -59,6 +62,7 @@ def connect_wlan() -> bool:
 
         # Wait for connection
         print(f"Attempting connection to network \"{network_name}\"...")
+        #sound.play_file("sound_wifi_connecting")
         timed_out: bool = not wait(wlan_timeout, exit_condition=lambda: globals.WLAN_OBJECT.isconnected(), string="for connection") # Returns true if exit condition met
         if (timed_out):
             print("X Connection timed out")
@@ -86,6 +90,7 @@ def connect_wlan() -> bool:
                 return False
         
         print("√ Connected to internet")
+        #sound.play_file("sound_wifi_success")
         return True
 
     return False
@@ -164,8 +169,10 @@ def initialize_main() -> None:
     # globals.WLAN_OBJECT = network.WLAN(network.STA_IF)
     globals.WLAN_OBJECT.active(True)
 
+
 # Main "thread"
 def main_thread():
+    OLD_STATE = None
     # Set onboard LED to on
     globals.ONBOARD_LED_PIN.value(1)
 
@@ -211,9 +218,19 @@ def main_thread():
                 
                 if (response_json["open"] == "1"):
                     color_thread.change_color(globals.COLOR_DOOR_OPEN, fade_time=globals.FADE_DURATION)
+                    
+                    if OLD_STATE != True:
+                        sound.play_file("sound_open")
+                        OLD_STATE = True
+
                     print("Door OPEN", end="")
                 else:
                     color_thread.change_color(globals.COLOR_DOOR_CLOSED, fade_time=globals.FADE_DURATION)
+                    
+                    if OLD_STATE != False:
+                        sound.play_file("sound_close")
+                        OLD_STATE = False
+
                     print("Door CLOSED", end="")
                 print(" for " + str(response_json["time"]) + " seconds\n")
 
